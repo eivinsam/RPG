@@ -151,11 +151,12 @@ namespace RPG
         {
             class Entry : FlatButton
             {
-                public string ItemName { get => (string)Content; set => Content = value; }
-                public Entry(string name)
+                public readonly Item item;
+
+                public Entry(Item item)
                 {
                     Margin = new Thickness(10.0, 5.0, 10.0, 5.0);
-                    Content = name;
+                    Content = item.name;
                     Background = new SolidColorBrush(Colors.LightGoldenrodYellow);
                     HorizontalAlignment = HorizontalAlignment.Stretch;
                     HorizontalContentAlignment = HorizontalAlignment.Left;
@@ -165,33 +166,28 @@ namespace RPG
                 }
             }
 
-            private readonly ItemList items;
+            private readonly NamedList<Item> items;
 
-            public List(ItemList items)
+            public List(NamedList<Item> items)
             {
                 this.items = items;
 
                 foreach (var item in items)
-                    Children.Add(new Entry(item.Key));
+                    Children.Add(new Entry(item));
             }
 
             public void Create()
             {
-                Children.Add(new Entry(""));
-                items.Add("", new ItemProperties());
+                var item = new Item();
+                Children.Add(new Entry(item));
+                items.Add(item);
             }
 
             private void Remove(Entry entry)
             {
-                items.Remove(entry.ItemName);
+                items.Remove(entry.item);
                 Children.Remove(entry);
             }
-        }
-
-        class Info : StackPanel
-        {
-
-            public Info()
         }
 
         readonly FlatButton new_item = new FlatButton
@@ -202,15 +198,15 @@ namespace RPG
         };
         readonly List items;
 
-        public ItemPanel(ItemList itemdata)
+        public ItemPanel(NamedList<Item> items)
         {
-            items = new List(itemdata);
+            this.items = new List(items);
 
             Children.Add(new Label { Content = "Items", FontSize = 16 });
-            Children.Add(items);
+            Children.Add(this.items);
             Children.Add(new_item);
 
-            new_item.Click += (s, e) => items.Create();
+            new_item.Click += (s, e) => this.items.Create();
         }
 
     }
@@ -222,7 +218,7 @@ namespace RPG
             var turns = new TurnPanel(c.world.party, c.world.places[0]);
 
             Items.Add(new TabItem { Header = "Turns", Content = turns });
-            Items.Add(new TabItem { Header = "Items", Content = new ItemPanel(c.world.itemdata) });
+            Items.Add(new TabItem { Header = "Items", Content = new ItemPanel(c.world.items) });
         }
     }
 

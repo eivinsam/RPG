@@ -7,50 +7,6 @@ using System.Runtime.Serialization.Json;
 
 namespace RPG
 {
-    public class ItemProperties : List<KeyValuePair<string,int>>
-    {
-        public int this[string key]
-        {
-            get => TryGetValue(key, out int value) ? value : throw new IndexOutOfRangeException();
-            set => Add(key, value);
-        }
-        public void Add(string key, int value)
-        {
-            for (int i = 0; i < Count; i++)
-                if (this[i].Key == key)
-                {
-                    this[i] = new KeyValuePair<string, int>(key, value);
-                    return;
-                }
-            Add(new KeyValuePair<string, int>(key, value));
-        }
-        public bool Remove(string key)
-        {
-            for (int i = 0; i < Count; i++)
-                if (this[i].Key == key)
-                {
-                    RemoveAt(i);
-                    return true;
-                }
-            return false;
-        }
-        public bool TryGetValue(string key, out int value)
-        {
-            foreach (var item in this)
-                if (item.Key == key)
-                {
-                    value = item.Value;
-                    return true;
-                }
-            value = 0;
-            return false;
-        }
-    }
-    public class ItemList : SortedList<string, ItemProperties>
-    {
-
-    }
-
     [DataContract]
     public class NamedData : IComparable<NamedData>
     {
@@ -101,6 +57,11 @@ namespace RPG
     [DataContract]
     public class Item : NamedData
     {
+        [DataMember(Order = 1)] public Dictionary<string, int> properties = new Dictionary<string, int>();
+    }
+    [DataContract]
+    public class ItemInstance : NamedData
+    {
         [DataMember(Order = 1)] public int quantity;
         [DataMember(Order = 2)] public int durability;
 
@@ -109,12 +70,12 @@ namespace RPG
             get
             {
                 int value = 0;
-                properties?.TryGetValue("Durability", out value);
+                item?.properties.TryGetValue("Durability", out value);
                 return value;
             }
         }
 
-        public ItemProperties properties;
+        public Item item;
     }
     [DataContract]
     public class Character : NamedData
@@ -129,7 +90,7 @@ namespace RPG
         [DataMember(Order = 2)] public int mind;
         [DataMember(Order = 3)] public readonly Dictionary<string, int> stats = new Dictionary<string, int>();
         [DataMember(Order = 4)] public readonly Dictionary<string, int> skills = new Dictionary<string, int>();
-        [DataMember(Order = 5)] public readonly List<Item> items = new List<Item>();
+        [DataMember(Order = 5)] public readonly List<ItemInstance> items = new List<ItemInstance>();
 
         public int STR { get => stats["STR"]; set => stats["STR"] = value; }
         public int DEX { get => stats["DEX"]; set => stats["DEX"] = value; }
@@ -169,11 +130,11 @@ namespace RPG
         }
         public Character FillVitals() { body = MaxBody; mind = MaxMind; return this; }
 
-        internal void FillItemProperties(ItemList itemdata)
+        internal void FillItemProperties(NamedList<Item> itemdata)
         {
             foreach (var i in items)
-                if (itemdata.TryGetValue(i.name, out ItemProperties p))
-                    i.properties = p;
+                if (itemdata.TryGetValue(i.name, out Item item))
+                    i.item = item;
         }
 
         public static readonly Dictionary<string, Generator> generators = new Dictionary<string, Generator>
@@ -199,7 +160,7 @@ namespace RPG
 
         [DataMember] public Place party = new Place { name = "Party" };
         [DataMember] public NamedList<Place> places = new NamedList<Place>();
-        [DataMember] public ItemList itemdata = new ItemList();
+        [DataMember] public NamedList<Item> items = new NamedList<Item>();
 
         public static Model Read(string filename)
         {
@@ -209,10 +170,10 @@ namespace RPG
                     .ReadObject(new FileStream(filename, FileMode.Open, FileAccess.Read)) as Model;
 
                 foreach (var c in result.party.characters)
-                    c.FillItemProperties(result.itemdata);
+                    c.FillItemProperties(result.items);
                 foreach (var p in result.places)
                     foreach (var c in p.characters)
-                        c.FillItemProperties(result.itemdata);
+                        c.FillItemProperties(result.items);
 
                 return result;
             }
