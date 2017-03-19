@@ -59,50 +59,33 @@ namespace RPG
         public Stat(string name)
         {
             this.name = name;
-            SetDock(value, Dock.Right);
-            Children.Add(value);
+            Children.Add(value, Dock.Right);
             Children.Add(new Label() { Content = texts.Keys.Contains(name) ? texts[name] : name, Padding = new Thickness(3) });
             Margin = new Thickness(2.0);
         }
     }
-    class Skill : DockPanel
+
+    class Skill : NamedNumberBox
     {
-        public readonly string name;
-        public NumberBox value = new NumberBox();
+        readonly StatsPanel panel;
+        public Skill(string name, int value, StatsPanel p) 
+            : base(name, value) { panel = p; }
 
-        public Skill(string name)
-        {
-            this.name = name;
-            var desc = new FlatButton
-            {
-                Content = name,
-                Margin = new Thickness(0, 0, 4, 0),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                HorizontalContentAlignment = HorizontalAlignment.Left
-            };
-            desc.ContextMenu = new ContextMenu();
-            desc.ContextMenu.Items.Add(new MenuItem("Remove", (s, e) => (Parent as StatsPanel).RemSkill(name)));
-            SetDock(value, Dock.Right);
-            Children.Add(value);
-            Children.Add(desc);
-            Margin = new Thickness(2.0);
-        }
-
+        public override void onRemoval() => panel.RemSkill(this);
+        public override void onValueChange(int v) => panel.updateSkill(name, v);
     }
+
     class StatsPanel : StackPanel, IDataPanel<Character>
     {
-        internal readonly TextBox name = new TextBox()
-        {
-            FontSize = 18,
-            Margin = new Thickness(10),
-            Width = 180,
-            Height = Double.NaN
-        };
+        internal readonly TextBox name = new HeaderBox();
         private readonly Vitals vitals;
+        private readonly ListPanel<Stat> stats = new ListPanel<Stat>();
+        private readonly ListPanel<Skill> skills = new ListPanel<Skill>();
 
         internal readonly Character character;
 
         public Character Data => character;
+
 
         public StatsPanel(Character c)
         {
@@ -110,33 +93,33 @@ namespace RPG
             name.Text = character.name;
             vitals = new Vitals(character);
 
-            Children.Add(name);
-            Children.Add(vitals);
+            Width = 200;
+
             foreach (var n in Character.stat_names)
             {
                 var stat = new Stat(n);
                 stat.value.Value = character.stats[n];
                 stat.value.Change += v => { character.stats[n] = v; vitals.Update(); };
-                Children.Add(stat);
+                stats.Add(stat);
             }
-            var new_skill_name = new TextBox { Margin = new Thickness(0, 0, 4.0, 0) };
-            var add_skill = new DockPanel { Margin = new Thickness(2.0) };
-            var add_skill_button = new Button { Content = "+", Width = 30 };
-            DockPanel.SetDock(add_skill_button, Dock.Right);
-            add_skill.Children.Add(add_skill_button);
-            add_skill.Children.Add(new_skill_name);
-            Children.Add(add_skill);
-
             foreach (var s in character.skills)
                 AddSkill(s.Key, s.Value);
 
-            add_skill_button.Click += (s, e) =>
+            Children.Add(name);
+            Children.Add(vitals);
+            Children.Add(stats);
+            Children.Add(skills);
+            var add_skill = new PropertyAdder();
+            Children.Add(add_skill);
+
+
+            add_skill.Added += (name, accept) =>
             {
-                if (AddSkill(new_skill_name.Text, 0) != null)
-                {
-                    (Children[Children.Count - 2] as Skill).value.Focus();
-                    new_skill_name.Text = "";
-                }
+                var added = AddSkill(name, 0);
+                if (added != null)
+                    added.value.Focus();
+                else
+                    accept.accepted = false;
             };
             name.TextChanged += (s, e) =>
             {
@@ -146,21 +129,19 @@ namespace RPG
                 (Parent as CharacterPanel).Update(character);
             };
         }
-        Skill AddSkill(string name, int value)
+        NamedNumberBox AddSkill(string name, int value)
         {
-            if (Children.OfType<Stat>().Any(s => s.name == name) || Children.OfType<Skill>().Any(s => s.name == name))
+            if (stats.Any(s => s.name == name) || skills.Any(s => s.name == name))
                 return null;
-            var new_skill = new Skill(name);
-            new_skill.value.Value = value;
-            new_skill.value.Change += v => character.skills[name] = v;
-            Children.Insert(Children.Count - 1, new_skill);
+            var new_skill = new Skill(name, value, this);
+            skills.Add(new_skill);
             return new_skill;
         }
-        internal void RemSkill(string name)
+        internal void updateSkill(string name, int value) => character.skills[name] = value;
+        internal void RemSkill(Skill skill)
         {
-            var match = Children.OfType<Skill>().SingleOrDefault(s => s.name == name);
-            if (match != null)
-                Children.Remove(match);
+            skills.Remove(skill);
+            character.skills.Remove(skill.name);
         }
     }
 

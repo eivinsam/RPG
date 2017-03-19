@@ -117,17 +117,13 @@ namespace RPG
         {
             tabs.Children.Remove(tabs.Children.OfType<Tab>().Where((t) => t.data == d).Single());
             data.Remove(d);
-            foreach (var stats in Children.OfType<Sub>().ToArray())
-                if (stats.Data == d)
-                    Select(null);
+            if (Children.OfType<Sub>().Any(s => s.Data == d))
+                Select(null);
         }
         void Select(Tab t)
         {
             Children.RemoveAt(1);
-            if (t == null)
-                Children.Add(no_entry);
-            else
-                Children.Add(CreateSub(t));
+            Children.Add(t == null ? (UIElement)no_entry : CreateSub(t));
         }
         public void Update(Data d)
         {

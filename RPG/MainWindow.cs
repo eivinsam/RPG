@@ -7,6 +7,35 @@ using System.Windows.Media;
 
 namespace RPG
 {
+    static class Extensions
+    {
+        public static void Add(this UIElementCollection c, UIElement e, Dock d)
+        {
+            DockPanel.SetDock(e, d);
+            c.Add(e);
+        }
+        public static void RemoveAll<T>(this UIElementCollection c, Func<T,bool> pred)
+            where T: UIElement
+        {
+            foreach (var match in c.OfType<T>().Where(pred).ToArray())
+                c.Remove(match);
+        }
+    }
+
+    class ListPanel<T> : StackPanel
+        where T: UIElement
+    {
+        public void Add(T entry) => Children.Add(entry);
+        public void Remove(T entry) => Children.Remove(entry);
+        public void RemoveAll(Func<T,bool> pred) => Children.RemoveAll<T>(pred);
+
+        public T Last => Children.Count == 0 ? null : Children[Children.Count - 1] as T;
+
+        public IEnumerable<T> Where(Func<T, bool> pred) => Children.OfType<T>().Where(pred);
+        public bool Any(Func<T, bool> pred) => Children.OfType<T>().Any(pred);
+        public bool All(Func<T, bool> pred) => Children.OfType<T>().All(pred);
+    }
+
     class Context
     {
         public Model world;
@@ -27,47 +56,19 @@ namespace RPG
 
     class FlatButton : Button
     {
-        private static Style style;
+        public FlatButton() => Style = (Style)FindResource(ToolBar.ButtonStyleKey);
 
-        public FlatButton()
-        {
-            if (style == null)
-                style = FindResource(ToolBar.ButtonStyleKey) as Style;
-            Style = style;
-        }
-        public FlatButton(RoutedEventHandler click_handler) : this()
-        {
-            Click += click_handler;
-        }
+        public FlatButton(RoutedEventHandler click_handler) : this() => Click += click_handler;
     }
 
-    class ClickableLabel : Label
+    class HeaderBox : TextBox
     {
-        public event RoutedEventHandler Click;
-        public event RoutedEventHandler RightClick;
-
-        public ClickableLabel()
+        public HeaderBox()
         {
-            MouseLeftButtonDown += (s, e) => { e.Handled = true; CaptureMouse(); };
-            MouseLeftButtonUp += (s, e) =>
-            {
-                if (!IsMouseCaptured)
-                    return;
-                ReleaseMouseCapture();
-                if (InputHitTest(e.GetPosition(this)) != null)
-                    Click?.Invoke(s, e);
-                e.Handled = true;
-            };
-            MouseRightButtonDown += (s, e) => { e.Handled = true; CaptureMouse(); };
-            MouseRightButtonUp += (s, e) =>
-            {
-                if (!IsMouseCaptured)
-                    return;
-                ReleaseMouseCapture();
-                if (InputHitTest(e.GetPosition(this)) != null)
-                    RightClick?.Invoke(s, e);
-                e.Handled = true;
-            };
+            FontSize = 18;
+            Margin = new Thickness(10);
+            HorizontalAlignment = HorizontalAlignment.Stretch;
+            Height = Double.NaN;
         }
     }
 
@@ -100,6 +101,63 @@ namespace RPG
                 Change?.Invoke(Text == "" ? 0 : int.Parse(Text));
             };
         }
+    }
+
+    abstract class NamedNumberBox : DockPanel
+    {
+        public readonly string name;
+        public readonly NumberBox value = new NumberBox { Margin = new Thickness(2) };
+        private readonly FlatButton desc;
+
+        public NamedNumberBox(string n, int v)
+        {
+            name = n;
+            value.Value = v;
+            value.Change += onValueChange;
+            desc = new FlatButton
+            {
+                Content = name,
+                Margin = new Thickness(2),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left
+            };
+            desc.ContextMenu = new ContextMenu();
+            desc.ContextMenu.Items.Add(new MenuItem("Remove", (s, e) => onRemoval()));
+
+            Children.Add(value, Dock.Right);
+            Children.Add(desc);
+        }
+
+        public abstract void onValueChange(int v);
+        public abstract void onRemoval();
+    }
+
+    class Acceptance
+    {
+        public bool accepted = true;
+    }
+    delegate void PropertyAdded(string name, Acceptance accept);
+
+    class PropertyAdder : DockPanel
+    {
+        public event PropertyAdded Added;
+
+        public PropertyAdder()
+        {
+            var text = new TextBox { Margin = new Thickness(2) };
+            var button = new Button { Margin = new Thickness(2), Content = "+", Width = 30 };
+
+            Children.Add(button, Dock.Right);
+            Children.Add(text);
+
+            button.Click += (s, e) =>
+            {
+                var accept = new Acceptance();
+                Added?.Invoke(text.Text, accept);
+                if (accept.accepted)
+                    text.Text = "";
+            };
+         }
     }
 
 
@@ -149,12 +207,16 @@ namespace RPG
     {
         class List : StackPanel
         {
-            class Entry : FlatButton
+            public class Entry : FlatButton
             {
                 public readonly Item item;
 
-                public Entry(Item item)
+                public new List Parent { get => (List)base.Parent; }
+
+                public Entry(Item i)
                 {
+                    item = i;
+
                     Margin = new Thickness(10.0, 5.0, 10.0, 5.0);
                     Content = item.name;
                     Background = new SolidColorBrush(Colors.LightGoldenrodYellow);
@@ -162,11 +224,15 @@ namespace RPG
                     HorizontalContentAlignment = HorizontalAlignment.Left;
                     ContextMenu = new ContextMenu();
 
-                    ContextMenu.Items.Add(new MenuItem("Delete", (s, e) => ((List)Parent).Remove(this)));
+                    ContextMenu.Items.Add(new MenuItem("Delete", (s, e) => Parent.Remove(this)));
+
+                    Click += (s, e) => Parent.Parent.Select(this);
                 }
             }
 
             private readonly NamedList<Item> items;
+
+            public new ItemPanel Parent { get => (ItemPanel)base.Parent; }
 
             public List(NamedList<Item> items)
             {
@@ -189,6 +255,58 @@ namespace RPG
                 Children.Remove(entry);
             }
         }
+        class Info : StackPanel
+        {
+            internal class Property : NamedNumberBox
+            {
+                readonly Info panel;
+                public Property(string name, int value, Info p)
+                    : base(name, value) { panel = p; }
+
+                public override void onRemoval() => panel.RemoveProperty(this);
+                public override void onValueChange(int v) => panel.UpdateProperty(name, v);
+            }
+            public readonly List.Entry entry;
+
+            private readonly ListPanel<Property> properties = new ListPanel<Property>();
+
+            public Info(List.Entry e)
+            {
+                entry = e;
+
+                var name_box = new HeaderBox { Text = entry.item.name };
+                var add_prop = new PropertyAdder();
+
+                foreach (var prop in entry.item.properties)
+                    properties.Add(new Property(prop.Key, prop.Value, this));
+
+                Children.Add(name_box);
+                Children.Add(properties);
+                Children.Add(add_prop);
+
+                name_box.TextChanged += (s, ev) =>
+                {
+                    entry.item.name = name_box.Text;
+                    entry.Content = entry.item.name;
+                };
+                add_prop.Added += (name, accept) =>
+                {
+                    if (entry.item.properties.ContainsKey(name))
+                    {
+                        accept.accepted = false;
+                        return;
+                    }
+                    accept.accepted = true;
+                    properties.Add(new Property(name, 0, this));
+                };
+            }
+            internal void UpdateProperty(string name, int value) => entry.item.properties[name] = value;
+            internal void RemoveProperty(Property prop)
+            {
+                properties.Remove(prop);
+                entry.item.properties.Remove(prop.name);
+            }
+        }
 
         readonly FlatButton new_item = new FlatButton
         {
@@ -197,6 +315,18 @@ namespace RPG
             Background = new SolidColorBrush(Colors.AliceBlue)
         };
         readonly List items;
+
+        void Select(List.Entry entry)
+        {
+            var old_info = Children[1] as Info;
+            if (old_info != null)
+            {
+                if (old_info.entry == entry)
+                    return;
+                Children.RemoveAt(1);
+            }
+            Children.Insert(1, new Info(entry));
+        }
 
         public ItemPanel(NamedList<Item> items)
         {
@@ -257,13 +387,7 @@ namespace RPG
         [STAThread]
         public static void Main()
         {
-            Random rng = new Random();
-            var men = new NameDistribution("GutterFornavnFodte.csv");
-            for (int i = 0; i < 10; ++i)
-                men.Next(rng);
-            Application app = new Application();
-
-            app.Run(new MainWindow());
+            new Application().Run(new MainWindow());
         }
 
     }
