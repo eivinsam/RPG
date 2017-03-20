@@ -6,45 +6,48 @@ using System.Windows;
 
 namespace RPG.UI
 {
-    class Vitals : DockPanel
+
+    class StatsPanel : StackPanel, IDataPanel<Model.Character>
     {
-        private readonly NumberBox body_box = new NumberBox { Value = 0 };
-        private readonly NumberBox mind_box = new NumberBox { Value = 0 };
-        private readonly Label body_max = new Label { Content = "/ 0" };
-        private readonly Label mind_max = new Label { Content = "/ 0" };
-
-        private readonly Model.Character character;
-
-        public Vitals(Model.Character c)
+        class Vitals : DockPanel
         {
-            character = c;
+            private readonly NumberBox body_box = new NumberBox { Value = 0 };
+            private readonly NumberBox mind_box = new NumberBox { Value = 0 };
+            private readonly Label body_max = new Label { Content = "/ 0" };
+            private readonly Label mind_max = new Label { Content = "/ 0" };
 
-            LastChildFill = false;
-            Children.Add(new Label { Content = "Body" });
-            Children.Add(body_box);
-            Children.Add(body_max);
-            Children.Add(mind_max);
-            Children.Add(mind_box);
-            Children.Add(new Label { Content = "Mind" });
-            for (int i = 0; i < 3; i++) DockPanel.SetDock(Children[i], Dock.Left);
-            for (int i = 3; i < 6; i++) DockPanel.SetDock(Children[i], Dock.Right);
+            private readonly Model.Character character;
 
-            body_box.Change += v => character.body = v;
-            mind_box.Change += v => character.mind = v;
+            public Vitals(Model.Character c)
+            {
+                character = c;
 
-            Update();
+                LastChildFill = false;
+                Children.Add(new Label { Content = "Body" });
+                Children.Add(body_box);
+                Children.Add(body_max);
+                Children.Add(mind_max);
+                Children.Add(mind_box);
+                Children.Add(new Label { Content = "Mind" });
+                for (int i = 0; i < 3; i++) DockPanel.SetDock(Children[i], Dock.Left);
+                for (int i = 3; i < 6; i++) DockPanel.SetDock(Children[i], Dock.Right);
+
+                body_box.Change += v => character.body = v;
+                mind_box.Change += v => character.mind = v;
+
+                Update();
+            }
+            public void Update()
+            {
+                body_box.Value = character.body;
+                mind_box.Value = character.mind;
+                body_max.Content = "/ " + character.MaxBody;
+                mind_max.Content = "/ " + character.MaxMind;
+            }
         }
-        public void Update()
+        class Stat : DockPanel
         {
-            body_box.Value = character.body;
-            mind_box.Value = character.mind;
-            body_max.Content = "/ " + character.MaxBody;
-            mind_max.Content = "/ " + character.MaxMind;
-        }
-    }
-    class Stat : DockPanel
-    {
-        static readonly Dictionary<string, string> texts = new Dictionary<string, string>
+            static readonly Dictionary<string, string> texts = new Dictionary<string, string>
         {
             { "STR", "[STR] Strength" },
             { "DEX", "[DEX] Dexterity" },
@@ -53,30 +56,28 @@ namespace RPG.UI
             { "NTU", "[NTU] Intuition" }
         };
 
-        public readonly string name;
-        public readonly NumberBox value = new NumberBox();
+            public readonly string name;
+            public readonly NumberBox value = new NumberBox();
 
-        public Stat(string name)
-        {
-            this.name = name;
-            Children.Add(value, Dock.Right);
-            Children.Add(new Label() { Content = texts.Keys.Contains(name) ? texts[name] : name, Padding = new Thickness(3) });
-            Margin = new Thickness(2.0);
+            public Stat(string name)
+            {
+                this.name = name;
+                Children.Add(value, Dock.Right);
+                Children.Add(new Label() { Content = texts.Keys.Contains(name) ? texts[name] : name, Padding = new Thickness(3) });
+                Margin = new Thickness(2.0);
+            }
         }
-    }
 
-    class Skill : NamedNumberBox
-    {
-        readonly StatsPanel panel;
-        public Skill(string name, int value, StatsPanel p) 
-            : base(name, value) { panel = p; }
+        internal class Skill : NamedNumberBox
+        {
+            readonly StatsPanel panel;
+            public Skill(string name, int value, StatsPanel p)
+                : base(name, value) { panel = p; }
 
-        public override void onRemoval() => panel.RemSkill(this);
-        public override void onValueChange(int v) => panel.updateSkill(name, v);
-    }
+            public override void onRemoval() => panel.RemoveSkill(this);
+            public override void onValueChange(int v) => panel.UpdateSkill(name, v);
+        }
 
-    class StatsPanel : StackPanel, IDataPanel<Model.Character>
-    {
         internal readonly TextBox name = new HeaderBox();
         private readonly Vitals vitals;
         private readonly ListPanel<Stat> stats = new ListPanel<Stat>();
@@ -137,8 +138,8 @@ namespace RPG.UI
             skills.Add(new_skill);
             return new_skill;
         }
-        internal void updateSkill(string name, int value) => character.skills[name] = value;
-        internal void RemSkill(Skill skill)
+        internal void UpdateSkill(string name, int value) => character.skills[name] = value;
+        internal void RemoveSkill(Skill skill)
         {
             skills.Remove(skill);
             character.skills.Remove(skill.name);
