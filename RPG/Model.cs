@@ -65,15 +65,7 @@ namespace RPG.Model
         [DataMember(Order = 1)] public int quantity;
         [DataMember(Order = 2)] public int durability;
 
-        public int MaxDurability
-        {
-            get
-            {
-                int value = 0;
-                item?.properties.TryGetValue("Durability", out value);
-                return value;
-            }
-        }
+        public int MaxDurability => item != null && item.properties.TryGetValue("Durability", out int value) ? value : 0;
 
         public Item item;
     }
