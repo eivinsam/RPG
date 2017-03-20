@@ -78,10 +78,40 @@ namespace RPG.UI
             public override void onValueChange(int v) => panel.UpdateSkill(name, v);
         }
 
+        class Item : StackPanel
+        {
+            readonly Model.ItemInstance item;
+            public Item(Model.ItemInstance i)
+            {
+                item = i;
+
+                var button = new FlatButton
+                {
+                    Content = item.name,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left
+                };
+                Children.Add(button);
+
+                button.Click += (s, e) =>
+                {
+                    if (Children.Count == 1)
+                    {
+                        Children.Add(new Label { Content = "[TEST]" });
+                    }
+                    else
+                        Children.RemoveAt(1);
+                };
+            }
+        }
+
+
         internal readonly TextBox name = new HeaderBox();
         private readonly Vitals vitals;
         private readonly ListPanel<Stat> stats = new ListPanel<Stat>();
         private readonly ListPanel<Skill> skills = new ListPanel<Skill>();
+
+        private ListPanel<Item> items = new ListPanel<Item>();
 
         internal readonly Model.Character character;
 
@@ -105,14 +135,22 @@ namespace RPG.UI
             }
             foreach (var s in character.skills)
                 AddSkill(s.Key, s.Value);
+            foreach (var item in character.items)
+                items.Add(new Item(item));
+            items.Add(new Item(new Model.ItemInstance { name = "Item of ultimate test" }));
+
+            var add_skill = new PropertyAdder();
+            var add_item = new PropertyAdder();
 
             Children.Add(name);
             Children.Add(vitals);
             Children.Add(stats);
+            Children.Add(new Label { Content = "Skills", HorizontalAlignment = HorizontalAlignment.Center, FontSize = 14 });
             Children.Add(skills);
-            var add_skill = new PropertyAdder();
             Children.Add(add_skill);
-
+            Children.Add(new Label { Content = "Items", HorizontalAlignment = HorizontalAlignment.Center, FontSize = 14 });
+            Children.Add(items);
+            Children.Add(add_item);
 
             add_skill.Added += (name, accept) =>
             {
@@ -121,6 +159,11 @@ namespace RPG.UI
                     added.value.Focus();
                 else
                     accept.accepted = false;
+            };
+            add_item.Added += (name, accept) =>
+            {
+                var item = new Item(new Model.ItemInstance { name = name });
+                items.Add(item);
             };
             name.TextChanged += (s, e) =>
             {
