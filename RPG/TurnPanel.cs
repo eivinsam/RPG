@@ -2,18 +2,18 @@
 using System.Collections.Generic;
 using System.Windows.Controls;
 
-namespace RPG
+namespace RPG.UI
 {
     class TurnPanel : StackPanel
     {
         class Turn : IComparable<Turn>
         {
             public int value;
-            public Character character;
+            public Model.Character character;
 
             static int delay(int speed) => (500 + speed - 1) / speed;
 
-            public Turn(Character c)
+            public Turn(Model.Character c)
             {
                 value = delay(c.stats["NTU"]);
                 character = c;
@@ -25,7 +25,7 @@ namespace RPG
         }
         readonly List<Turn> turns = new List<Turn>();
 
-        public TurnPanel(Place party, Place location)
+        public TurnPanel(Model.Place party, Model.Place location)
         {
             foreach (var c in party.characters)
                 turns.Add(new Turn(c));

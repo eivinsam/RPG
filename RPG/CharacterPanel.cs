@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows;
 
-namespace RPG
+namespace RPG.UI
 {
     class Vitals : DockPanel
     {
@@ -13,9 +13,9 @@ namespace RPG
         private readonly Label body_max = new Label { Content = "/ 0" };
         private readonly Label mind_max = new Label { Content = "/ 0" };
 
-        private readonly Character character;
+        private readonly Model.Character character;
 
-        public Vitals(Character c)
+        public Vitals(Model.Character c)
         {
             character = c;
 
@@ -75,19 +75,19 @@ namespace RPG
         public override void onValueChange(int v) => panel.updateSkill(name, v);
     }
 
-    class StatsPanel : StackPanel, IDataPanel<Character>
+    class StatsPanel : StackPanel, IDataPanel<Model.Character>
     {
         internal readonly TextBox name = new HeaderBox();
         private readonly Vitals vitals;
         private readonly ListPanel<Stat> stats = new ListPanel<Stat>();
         private readonly ListPanel<Skill> skills = new ListPanel<Skill>();
 
-        internal readonly Character character;
+        internal readonly Model.Character character;
 
-        public Character Data => character;
+        public Model.Character Data => character;
 
 
-        public StatsPanel(Character c)
+        public StatsPanel(Model.Character c)
         {
             character = c;
             name.Text = character.name;
@@ -95,7 +95,7 @@ namespace RPG
 
             Width = 200;
 
-            foreach (var n in Character.stat_names)
+            foreach (var n in Model.Character.stat_names)
             {
                 var stat = new Stat(n);
                 stat.value.Value = character.stats[n];
@@ -126,7 +126,7 @@ namespace RPG
                 if (character == null)
                     return;
                 character.name = name.Text;
-                (Parent as CharacterPanel).Update(character);
+                ((CharacterPanel)Parent).Update(character);
             };
         }
         NamedNumberBox AddSkill(string name, int value)
@@ -145,13 +145,13 @@ namespace RPG
         }
     }
 
-    class CharacterPanel : TabPanel<Character, StatsPanel>, IDataPanel<Place>
+    class CharacterPanel : TabPanel<Model.Character, StatsPanel>, IDataPanel<Model.Place>
     {
         private readonly Random rng = new Random();
-        readonly Place place;
-        public Place Data => place;
+        readonly Model.Place place;
+        public Model.Place Data => place;
 
-        public CharacterPanel(Place p, Dock tab_dock) : base(p.characters, tab_dock)
+        public CharacterPanel(Model.Place p, Dock tab_dock) : base(p.characters, tab_dock)
         {
             place = p;
 
@@ -163,7 +163,7 @@ namespace RPG
 
         protected override StatsPanel CreateSub(Tab t) => new StatsPanel(t.data);
 
-        protected override string[]  NewEntryOptions()       => Character.generators.Keys.ToArray();
-        protected override Character NewEntry(string option) => Character.generators[option](rng).FillVitals();
+        protected override string[]        NewEntryOptions()       => Model.Character.generators.Keys.ToArray();
+        protected override Model.Character NewEntry(string option) => Model.Character.generators[option](rng).FillVitals();
     }
 }

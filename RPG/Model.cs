@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 
-namespace RPG
+namespace RPG.Model
 {
     [DataContract]
     public class NamedData : IComparable<NamedData>

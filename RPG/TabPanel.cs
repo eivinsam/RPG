@@ -4,7 +4,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Controls;
 
-namespace RPG
+namespace RPG.UI
 {
     internal interface IDataPanel<DataT>
     {
@@ -12,7 +12,7 @@ namespace RPG
     }
 
     internal abstract class TabPanel<Data, Sub> : DockPanel
-        where Data : NamedData
+        where Data : Model.NamedData
         where Sub : UIElement, IDataPanel<Data>
     {
         protected class Tab : FlatButton

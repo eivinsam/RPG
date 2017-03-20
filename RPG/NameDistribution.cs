@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 using System.Diagnostics;
 
-namespace RPG
+namespace RPG.Model
 {
     public class NameDistribution
     {

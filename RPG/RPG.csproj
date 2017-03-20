@@ -52,6 +52,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CharacterPanel.cs" />
+    <Compile Include="ItemPanel.cs" />
     <Compile Include="MainWindow.cs" />
     <Compile Include="NameDistribution.cs" />
     <Compile Include="TabPanel.cs" />
